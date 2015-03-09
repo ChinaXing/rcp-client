@@ -32,7 +32,19 @@ list_reverse(L) -> list_reverse_loop([], L).
 list_reverse_loop(L, []) -> L;
 list_reverse_loop(L, [I | H]) -> list_reverse_loop([I | L], H).
 
-gen_logger(Identity, Args0) -> fun(Strformat, Args) -> io:format(Identity ++ Strformat, list_concat(Args0, Args)) end.
+gen_logger(Identity, Args0) -> 
+    fun(Type, Strformat, Args) -> 
+	    case Type  of
+		error ->
+		    error_logger:error_msg(Identity ++ Strformat, list_concat(Args0, Args));
+		info ->
+		    error_logger:info_msg(Identity ++ Strformat, list_concat(Args0, Args));
+		warn ->
+		    error_logger:warn_msg(Identity ++ Strformat, list_concat(Args0, Args));
+		_ -> 
+		    error_logger:info_msg(Identity ++ Strformat, list_concat(Args0, Args))
+	    end
+    end.
 
 get_timestamp() ->
     {A,B,_} = os:timestamp(),

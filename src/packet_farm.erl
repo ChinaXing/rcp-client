@@ -1,11 +1,11 @@
 -module(packet_farm).
--export([build_package/3, parse_package/2]).
+-export([build_package/4, parse_package/2]).
 -include("package_constant.hrl").
 
-build_package(auth, Index,[]) ->
+build_package(auth, Prefix, Index,[]) ->
     PB = #authBody{
 	    timestamp = lib_misc:get_timestamp(),
-	    routerSeq = string:left("r_" ++ integer_to_list(Index), 64, 0),
+	    routerSeq = string:left("r_" ++ Prefix ++ integer_to_list(Index), 64, 0),
 	    routerMac = lib_misc:get_mac(Index),
 	    sign = string:left(lib_misc:get_sign(Index),32,0)
 	   },
@@ -24,7 +24,7 @@ build_package(auth, Index,[]) ->
     PH = build_header(PkgLen, ?ROUTER_SHAKE_COMMAND_REQUEST),
     list_to_binary([PH,PBbits]);
 
-build_package(heartbeat, _ ,[OnlineNum]) ->
+build_package(heartbeat, _, _, [OnlineNum]) ->
     PB = #heartbeatBody{ onlineUserNum = OnlineNum},
     PBbits = <<(PB#heartbeatBody.onlineUserNum):16>>,
     PkgLen = byte_size(PBbits) + 24,
