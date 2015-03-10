@@ -18,12 +18,12 @@ help() ->
 start(Prefix, ClientNum, Host, Port, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout) ->
     PidList = start_loop(Prefix, 0, ClientNum, Host, Port, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout, []),
     error_logger:info_msg("All clients started : ~p~n", [PidList]),
-    T = ets:new(routers,[]),
+    T = ets:new(list_to_atom("routers_" ++ Prefix),[named_table]),
     ets:insert(T, PidList),
-    monitor_client(T).
+    monitor_client(T, length(PidList), 0).
 
 
-monitor_client(T) ->
+monitor_client(T, AliveCount, DiedCount) ->
     case ets:first(T) of
 	'$end_of_table' ->
 	    error_logger:info_msg("All clients shutdown!~n",[]);
@@ -32,7 +32,8 @@ monitor_client(T) ->
 		{'DOWN', _, process, Pid, Info} ->
 		    ets:delete(T,Pid),
 		    error_logger:error_msg("Router exit message : ~p~n", [Info]),
-		    monitor_client(T)
+		    error_logger:error_msg("Router : alive = ~p, diede = ~p ~n", [AliveCount - 1, DiedCount + 1 ]),
+		    monitor_client(T, AliveCount - 1, DiedCount)
 	    end
     end.
     
@@ -48,5 +49,5 @@ start_loop(Prefix, FromIndex, ClientNum, Host, Port, StartInterval, StartBatchSi
 start_routers(_, FromIndex, FromIndex, _, _, _, _, PidStarted) -> PidStarted;
 start_routers(Prefix, FromIndex, ToIndex, Host, Port, HeartbeatInterval, WaitResponseTimeout, PidStarted) ->
   {Pid, _} = spawn_monitor(router, start, [Prefix, FromIndex, Host, Port, HeartbeatInterval, WaitResponseTimeout]),
-  start_routers(Prefix, FromIndex + 1, ToIndex, Host, Port, HeartbeatInterval, WaitResponseTimeout, [{FromIndex, Pid} | PidStarted]).
+  start_routers(Prefix, FromIndex + 1, ToIndex, Host, Port, HeartbeatInterval, WaitResponseTimeout, [{Pid, FromIndex} | PidStarted]).
 
