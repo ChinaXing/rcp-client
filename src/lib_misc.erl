@@ -18,15 +18,25 @@ sleep(Timeout) ->
   after Timeout -> ok
   end.
 
+lib_init(Index) ->
+    {_,B,C} = now(),
+    random:seed(B,C,Index).
+
+sleep_random(Timeout, Delta) ->
+    sleep(Timeout - Delta + random:uniform(2 * Delta)).
+
 list_flatten(L) -> list_reverse((list_flatten_loop([], L))).
 
 list_flatten_loop(Result, []) -> Result;
 list_flatten_loop(Result, [T | H]) ->
   list_flatten_loop(list_concat(Result, T), H).
 
-list_concat(A, []) -> A;
-list_concat(A, [I | B]) ->
-  list_concat([I | A], B).
+list_concat(A, B) ->
+    list_concat0(lists:reverse(A), B).
+
+list_concat0([], B) -> B;
+list_concat0([I|A], B) ->
+  list_concat0(A, [I|B]).
 
 list_reverse(L) -> list_reverse_loop([], L).
 list_reverse_loop(L, []) -> L;
@@ -45,6 +55,13 @@ gen_logger(Identity, Args0) ->
 		    error_logger:info_msg(Identity ++ Strformat, list_concat(Args0, Args))
 	    end
     end.
+
+get_logger(File) ->
+    {ok, IoDevice} = file:open(File,write),
+    fun(Format, Args) ->
+		   io:format(IoDevice,Format,Args)
+    end.
+    
 
 get_timestamp() ->
     {A,B,_} = os:timestamp(),
