@@ -11,3 +11,7 @@ rel/example_project
 /rcp-client.iml
 /.idea/
 *~
+/stat.log
+/threerouters.log
+/threestat.log
+*.log

@@ -16,10 +16,10 @@ help() ->
     io:format("start(Prefix, ClientNum, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout).",[]).
 
 start(Prefix, ClientNum, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout) ->
-    error_logger:logfile({open, Prefix ++ "routers.log"}),
+    error_logger:logfile({open, Prefix ++ "_routers.log"}),
     error_logger:tty(false),
     T = ets:new(list_to_atom("routers_" ++ Prefix),[named_table]),
-    Logger = lib_misc:get_logger(Prefix ++ "stat.log"),
+    Logger = lib_misc:get_logger(Prefix ++ "_stat.log"),
     spawn_link(fun() -> 
 		       spit_mon_log(Logger, 1000, ClientNum, T)
 	       end),
