@@ -63,15 +63,28 @@ get_logger(File) ->
     end.
     
 
-get_timestamp() ->
+get_timestamp_seconds() ->
     {A,B,_} = os:timestamp(),
     A * 1000000 + B.
 
+get_timestamp_micro_seconds() ->
+    {A, B, C} = os:timestamp(),
+    (A * 1000000 + B) * 1000000 + C.
+
+get_timestamp_million_seconds() ->
+    {A, B, C} = os:timestamp(),
+    (A * 1000000 + B) * 1000 + round(C/1000).
 
 get_mac(Index) ->
     M=#mac{a=Index band 255, b = (Index bsr 8) band 255, 
 	       c = (Index bsr 16) band 255, d = (Index bsr 24) band 255},
     <<(M#mac.a),(M#mac.b),(M#mac.c),(M#mac.d),(M#mac.e),(M#mac.f)>>.
 
-get_sign(Index) ->
-    "hello,world" ++ integer_to_list(Index).
+get_sign(RouterSeq,Secret,Time) ->
+    Md50 = get_md5_hex_str(Secret ++ RouterSeq),
+    get_md5_hex_str(Md50 ++ integer_to_list(Time)).
+    
+
+get_md5_hex_str(Str) ->
+    X = erlang:md5(Str),
+    [begin if N < 10 -> 48 + N; true -> 87 + N end end || <<N:4>> <= X].

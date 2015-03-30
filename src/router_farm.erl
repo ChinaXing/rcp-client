@@ -61,4 +61,3 @@ start_routers(Prefix, FromIndex, ToIndex, Host, Port, BindIp, HeartbeatInterval,
   {Pid, _} = spawn_monitor(router, start, [Prefix, FromIndex, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout]),
   ets:insert(PidTable,{Pid, FromIndex}),  
   start_routers(Prefix, FromIndex + 1, ToIndex, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable).
-
