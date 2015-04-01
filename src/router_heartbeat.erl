@@ -15,7 +15,7 @@
 %% 2. 调用者可以控制此心跳进程的退出
 %% ---------------------------------------------------------
 heart_beat_loop(IOPid, {Prefix, Index, WaitTimeout, HeartbeatInterval, Logger}) ->
-    HeartbeatExecutor = spawn(heart_beat_executor,IOPid, {Prefix, Index, WaitTimeout, Logger}),
+    HeartbeatExecutor = spawn(heart_beat_executor,[IOPid, {Prefix, Index, WaitTimeout, Logger}]),
     Caller = self(),
     Repeater = spawn(fun() ->
 			     Ret = heart_beat_fix_rate(HeartbeatExecutor, HeartbeatInterval),
@@ -73,7 +73,8 @@ heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout, Logger}) ->
 do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry, Logger}) ->
     Packet = packet_farm:build_package(heartbeat, Prefix, true, [200]),
     Start = lib_misc:get_timestamp_micro_seconds(),
-    case IOPid ! {self(), heartbeat, Packet} of
+    IOPid ! {self(), heartbeat, Packet},
+    receive
 	{error, Reason} ->
 	    Logger(error, "send heartbeat package failed : ~p ~n", [Reason]),
 	    if

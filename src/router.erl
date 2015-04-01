@@ -10,7 +10,8 @@
 -author("LambdaCat").
 
 %% API
--export([start/7, start_router/5]).
+%-export([start/7, start_router/5]).
+-compile(export_all).
 -include("package_constant.hrl").
 
 start(Prefix, Index, Host, Port, BindIp, HeartbeatInterval, WaitTimeout) ->
@@ -49,12 +50,13 @@ start_router(Host, Port, BindIp, WaitTimeout, Logger) ->
 				    binary,{active, true}, 
 				    {send_timeout, WaitTimeout}], WaitTimeout),
     Logger(info, "connected~n", []),
-    Pid = spawn_link(io_loop, Socket, Logger),
+    Pid = spawn_link(?MODULE, io_loop, [Socket, Logger]),
     ok = gen_tcp:controlling_process(Socket,Pid),
     {ok, Pid}. 
 
 %% IO 进程的主循环
 io_loop(Socket, Logger) ->
+    io:format("hello, io_loop~n",[]),
     receive 
 	{tcp, Socket, Data} ->
 	    case demultiplex(Data) of %% 解多路复用，分解到具体的业务进程处理
@@ -65,11 +67,13 @@ io_loop(Socket, Logger) ->
 		    Logger(error, "cannot demultiplex response Data to biz Packet,~p~n",[Reason])
 	    end;
 	{From, Type, Packet} ->
-	    put("packet_type" ++ Type, From), %% save packet type owner / for later demultiplex
+	    put("packet_type_" ++ Type, From), %% save packet type owner / for later demultiplex
 	    From ! gen_tcp:send(Socket, Packet),
 	    io_loop(Socket, Logger);
 	{From, exit} ->
-	    From ! ok
+	    From ! ok;
+	Other ->
+	    Logger("unknow command ~p~n",[Other])
     end.
 
 
@@ -80,7 +84,7 @@ demultiplex(Data) ->
 	{unknow, Reason} ->
 	    {error, Reason};
 	Type ->
-	    Target = get("packet_type" ++ Type),
+	    Target = get("packet_type_" ++ Type),
 	    {ok, Target}
     end.
     

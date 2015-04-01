@@ -53,7 +53,7 @@ parse_package(heartbeat, _ ) ->
     
 get_packet_command(Packet) ->
     try	
-	<<_:48,Command:16>> = Packet,
+	<<_:48,Command:16,_/binary>> = Packet,
 	case Command of
 	    ?ROUTER_SHAKE_COMMAND_RESPONSE ->
 		auth;
@@ -65,7 +65,7 @@ get_packet_command(Packet) ->
 		{unknow, {command, Command}}
 	end
     catch
-	_:_ -> {unkown, {command, parse_error}}
+	_:_ -> {unknow, {command, parse_error}}
     end.
 
 	    

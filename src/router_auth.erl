@@ -11,7 +11,8 @@
 do_auth(IOPid, {Prefix, Index, WaitTimeout,Retry, Logger}) ->
     Packet = packet_farm:build_package(auth, Prefix, Index,[]),
     Start = lib_misc:get_timestamp_micro_seconds(),
-    case IOPid ! {self(), auth, Packet} of
+    IOPid ! {self(), auth, Packet},
+    receive
 	{error, Reason} ->
 	    Logger(error, "send auth package failed : ~p ~n", [Reason]),
 	    if
