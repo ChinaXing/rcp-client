@@ -10,8 +10,7 @@
 -author("LambdaCat").
 
 %% API
-%-export([start/7, start_router/5]).
--compile(export_all).
+-export([start/7, start_router/5]).
 -include("package_constant.hrl").
 
 start(Prefix, Index, Host, Port, BindIp, HeartbeatInterval, WaitTimeout) ->
@@ -50,7 +49,9 @@ start_router(Host, Port, BindIp, WaitTimeout, Logger) ->
 				    binary,{active, true}, 
 				    {send_timeout, WaitTimeout}], WaitTimeout),
     Logger(info, "connected~n", []),
-    Pid = spawn_link(?MODULE, io_loop, [Socket, Logger]),
+    Pid = spawn_link(fun() ->
+			     io_loop(Socket, Logger)
+		     end),
     ok = gen_tcp:controlling_process(Socket,Pid),
     {ok, Pid}. 
 
@@ -64,7 +65,8 @@ io_loop(Socket, Logger) ->
 		    Target ! {response, Data},
 		    io_loop(Socket, Logger);
 		{error, Reason} ->
-		    Logger(error, "cannot demultiplex response Data to biz Packet,~p~n",[Reason])
+		    Logger(warn, "[ignore] cannot demultiplex response Data to biz Packet,~p~n",[Reason]),
+		    io_loop(Socket, Logger)
 	    end;
 	{From, Type, Packet} ->
 	    put("packet_type_" ++ Type, From), %% save packet type owner / for later demultiplex

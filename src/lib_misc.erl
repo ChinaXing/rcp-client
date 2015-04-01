@@ -50,7 +50,7 @@ gen_logger(Identity, Args0) ->
 		info ->
 		    error_logger:info_msg(Identity ++ Strformat, list_concat(Args0, Args));
 		warn ->
-		    error_logger:warn_msg(Identity ++ Strformat, list_concat(Args0, Args));
+		    error_logger:warning_msg(Identity ++ Strformat, list_concat(Args0, Args));
 		_ -> 
 		    error_logger:info_msg(Identity ++ Strformat, list_concat(Args0, Args))
 	    end
