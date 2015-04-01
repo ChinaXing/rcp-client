@@ -15,7 +15,7 @@
 %% 2. 调用者可以控制此心跳进程的退出
 %% ---------------------------------------------------------
 heart_beat_loop(IOPid, {Prefix, Index, WaitTimeout, HeartbeatInterval, Logger}) ->
-    HeartbeatExecutor = spawn(heart_beat_executor,[IOPid, {Prefix, Index, WaitTimeout, Logger}]),
+    HeartbeatExecutor = spawn(?MODULE, heart_beat_executor,[IOPid, {Prefix, Index, WaitTimeout, Logger}]),
     Caller = self(),
     Repeater = spawn(fun() ->
 			     Ret = heart_beat_fix_rate(HeartbeatExecutor, HeartbeatInterval),
