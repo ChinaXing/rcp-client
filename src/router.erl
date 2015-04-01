@@ -57,7 +57,6 @@ start_router(Host, Port, BindIp, WaitTimeout, Logger) ->
 
 %% IO 进程的主循环
 io_loop(Socket, Logger) ->
-    io:format("hello, io_loop~n",[]),
     receive 
 	{tcp, Socket, Data} ->
 	    case demultiplex(Data) of %% 解多路复用，分解到具体的业务进程处理
