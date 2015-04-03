@@ -118,6 +118,9 @@ do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry, Logger}) ->
 		    Logger(error, "heartbeat recieve response timeout~n",[]),
 		    {error, timeout}
 	    end
+    after WaitTimeout ->
+	    Logger(error, "heartbeat send request timeout~n",[]),
+	    {error, send_timeout}
     end.
 
 %% check heartbeat    

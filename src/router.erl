@@ -85,8 +85,11 @@ demultiplex(Data) ->
 	{unknow, Reason} ->
 	    {error, Reason};
 	Type ->
-	    Target = get("packet_type_" ++ Type),
-	    {ok, Target}
+	    case get("packet_type_" ++ Type) of
+		undefined -> {error, no_registered_cmd_processor};
+		Target ->
+		    {ok, Target}
+	    end
     end.
     
 	

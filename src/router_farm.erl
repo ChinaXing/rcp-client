@@ -19,10 +19,10 @@ start(WorkerId, Prefix, ClientNum, Host, Port, BindIp, StartInterval, StartBatch
     error_logger:logfile({open, Prefix ++ "_routers.log"}),
     error_logger:tty(false),
     T = ets:new(list_to_atom("routers_" ++ Prefix),[named_table]),
-    Logger = lib_misc:get_logger("/tmp/" ++ integer_to_list(WorkerId) ++ "_stat.log"),
-    spawn_link(fun() -> 
-		       spit_mon_log(Logger, 1000, ClientNum, T)
-	       end),
+%    Logger = lib_misc:get_logger("/tmp/" ++ integer_to_list(WorkerId) ++ "_stat.log"),
+%    spawn_link(fun() -> 
+%		       spit_mon_log(Logger, 1000, ClientNum, T)
+%	       end),
     start_loop(Prefix, 0, ClientNum, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout, T),
     error_logger:info_msg("All clients started : ~p~n", [ClientNum]),
     monitor_client(T, ClientNum, 0).
