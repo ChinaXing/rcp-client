@@ -32,7 +32,7 @@ start(Prefix, Index, Host, Port, BindIp, HeartbeatInterval, WaitTimeout) ->
 command_listen(Logger) ->
     receive
 	{_, error, Reason} ->
-	    Logger(error,"heartbeat failed, exit : ~p~n",[Reason]),
+	    Logger(error,"router exit , reason : ~p~n",[Reason]),
 	    exit(Reason)
     end.
     
@@ -44,11 +44,13 @@ command_listen(Logger) ->
 %% ------------------------------------------------------------------------------------------------
 start_router(Host, Port, BindIp, WaitTimeout, Logger) ->
     Logger(info, "begin connect to rcp ~n", []),
+    Start = lib_misc:get_timestamp_micro_seconds(),
     {ok, Socket} = gen_tcp:connect(Host, Port, 
 				   [{ip, BindIp}, {packet, 2}, 
 				    binary,{active, true}, 
 				    {send_timeout, WaitTimeout}], WaitTimeout),
-    Logger(info, "connected~n", []),
+    End = lib_misc:get_timestamp_micro_seconds(),
+    Logger(info, "connected, connect_rt=~p~n", [End - Start]),
     Pid = spawn_link(fun() ->
 			     io_loop(Socket, Logger)
 		     end),
@@ -67,14 +69,22 @@ io_loop(Socket, Logger) ->
 		    Logger(warn, "[ignore] cannot demultiplex response Data to biz Packet,~p~n",[Reason]),
 		    io_loop(Socket, Logger)
 	    end;
+	{tcp_closed, Socket} ->
+	    Logger(error, "socket closed !~n",[]),
+	    exit(tcp_closed);
+	{tcp_error, Socket, Reason} ->
+	    Logger(error, "socket error : ~p~n",[Reason]),
+	    exit(Reason);
 	{From, Type, Packet} ->
 	    put("packet_type_" ++ Type, From), %% save packet type owner / for later demultiplex
 	    From ! gen_tcp:send(Socket, Packet),
 	    io_loop(Socket, Logger);
 	{From, exit} ->
-	    From ! ok;
+	    From ! ok,
+	    exit(processor_exit);
 	Other ->
-	    Logger("unknow command ~p~n",[Other])
+	    Logger(error, "unknow command ~p~n",[Other]),
+	    exit(unknow_command)
     end.
 
 
