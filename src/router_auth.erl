@@ -37,8 +37,11 @@ do_auth(IOPid, {Prefix, Index, WaitTimeout,Retry, Logger}) ->
 		    end
 	    after WaitTimeout ->
 		    Logger(error, "receive auth failed : timeout ~n", []),
-		    {error, timeout}
+		    {error, recv_resp_timeout}
 	    end
+    after WaitTimeout ->
+	    Logger(error, "send auth failed :timeout~n",[]),
+	    {error, send_req_timeout}
     end.
 
 %% 检查认证响应的合法性

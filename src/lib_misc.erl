@@ -88,3 +88,9 @@ get_sign(RouterSeq,Secret,Time) ->
 get_md5_hex_str(Str) ->
     X = erlang:md5(Str),
     [begin if N < 10 -> 48 + N; true -> 87 + N end end || <<N:4>> <= X].
+
+get_ip(Index0, Index1, Index2, Index3) ->
+    <<Index0:8,Index1:8,Index2:8,Index3:8>>.
+
+
+    

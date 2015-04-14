@@ -10,10 +10,10 @@
 -author("LambdaCat").
 
 %% API
--export([start/7, start_router/5]).
+-export([start/8, start_router/5]).
 -include("package_constant.hrl").
 
-start(Prefix, Index, Host, Port, BindIp, HeartbeatInterval, WaitTimeout) ->
+start(Prefix, Index, UserCount, Host, Port, BindIp, HeartbeatInterval, WaitTimeout) ->
     Logger = lib_misc:gen_logger("Router : ~p, ", [Index]),
     {ok, IOPid} = start_router(Host, Port, BindIp, WaitTimeout, Logger),
     %% start auth
@@ -26,6 +26,13 @@ start(Prefix, Index, Host, Port, BindIp, HeartbeatInterval, WaitTimeout) ->
     %% start heartbeat
     {ok, _} = router_heartbeat:heart_beat_loop(
 		       IOPid, {Prefix, Index, WaitTimeout, HeartbeatInterval, Logger}),
+    % sleep a while
+    lib_misc:sleep(5000),
+    [C|_] = Prefix,
+    I = list_to_integer([C]),
+    % start user online
+    router_user_online:do_online(IOPid, {UserCount, Prefix, I bsl 16 + Index,WaitTimeout, Logger}),
+    
     %% listen 
     command_listen(Logger).
 
@@ -95,12 +102,18 @@ demultiplex(Data) ->
 	{unknow, Reason} ->
 	    {error, Reason};
 	Type ->
-	    case get("packet_type_" ++ Type) of
-		undefined -> {error, no_registered_cmd_processor};
-		Target ->
-		    {ok, Target}
+	    case packet_farm:get_packet_command_req(Type) of
+		{unknow, Reason} ->
+		    {error, {unknow, Reason}};
+		{ok, ReqCmds} ->
+		    find_req_by_cmds(ReqCmds)
 	    end
     end.
-    
-	
-    
+find_req_by_cmds([Cmd|Cmds]) -> 
+    case get("packet_type_" ++ Cmd) of 
+	undefined -> 
+	    find_req_by_cmds(Cmds);
+	Target ->
+	    {ok, Target}
+    end;
+find_req_by_cmds([]) -> {error, {no_registered_cmd_processor}}.

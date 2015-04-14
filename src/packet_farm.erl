@@ -1,6 +1,33 @@
 -module(packet_farm).
--export([build_package/4, parse_package/2, get_packet_command/1]).
+%-export([build_package/4, parse_package/2, get_packet_command/1]).
+-compile(export_all).
 -include("package_constant.hrl").
+
+build_package(user_online, RouterIndex , Index, []) ->
+    Operation = 1,
+    IsIpV6 = 0,
+    UserIp = lib_misc:get_ip(192, 168, RouterIndex, Index),
+    UserMac = lib_misc:get_mac(RouterIndex bsl 8 + Index),
+    ApMac = lib_misc:get_mac(RouterIndex bsl 8),
+    Ssid = integer_to_list(RouterIndex) ++ "_" ++ integer_to_list(Index),
+    IsWired = 0,
+    IsEncryption = 0,
+    Ssid0 = list_to_binary(string:left(Ssid,32,0)),
+    PB = <<Operation:8,
+	   IsIpV6:8,
+	   UserIp/binary,
+	   0:96,
+	   UserMac/binary,
+	   0:16,
+	   ApMac/binary,
+	   0:16,
+	   Ssid0/binary,
+	   IsWired:8,
+	   IsEncryption:8
+	 >>,
+    PH = build_header(?USER_ACTION_REQ),
+    list_to_binary([PH,PB]);
+
 
 build_package(auth, Prefix, Index,[]) ->
     RouterSeq_0 = "r_" ++ Prefix ++ integer_to_list(Index),
@@ -48,9 +75,25 @@ build_header(Command) ->
 parse_package(auth, Bin) ->
     <<_:(?HEADER_LENGTH*8), Success,Code:16>> = Bin,
     {ok, {Success, Code}};
+
 parse_package(heartbeat, _ ) ->
-    ok.
-    
+    ok;
+
+parse_package(user_allow, Bin) ->
+    <<_:(?HEADER_LENGTH*8), Cmd:8, _/binary>> = Bin,    
+    case Cmd of
+	1 ->
+	    {ok, pass};
+	2 ->
+	    {ok, forbidden};
+	3 ->
+	    {ok, stop_and_jump};
+	4 ->
+	    {ok, pass_and_jump};
+	_ ->
+	    {error, Cmd}
+    end.
+	    
 get_packet_command(Packet) ->
     try	
 	<<_:48,Command:16,_/binary>> = Packet,
@@ -69,4 +112,12 @@ get_packet_command(Packet) ->
     end.
 
 	    
+	    
+get_packet_command_req(ResponseCmd) ->
+    case ResponseCmd of
+	user_allow -> {ok, [user_online, user_offline]};
+	heartbeat  -> {ok, [heartbeat]};
+	auth -> {ok, [auth]};
+	_ -> {unknow, ResponseCmd}
+    end.
 	    

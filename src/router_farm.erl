@@ -10,12 +10,12 @@
 -author("LambdaCat").
 
 %% API
--export([start/10,help/0]).
+-export([start/11,help/0]).
 
 help() ->
-    io:format("start(WorkerId, Prefix, ClientNum, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout).",[]).
+    io:format("start(WorkerId, Prefix, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout).",[]).
 
-start(WorkerId, Prefix, ClientNum, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout) ->
+start(WorkerId, Prefix, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout) ->
     error_logger:logfile({open, Prefix ++ "_routers.log"}),
     error_logger:tty(false),
     T = ets:new(list_to_atom("routers_" ++ Prefix),[named_table]),
@@ -23,7 +23,7 @@ start(WorkerId, Prefix, ClientNum, Host, Port, BindIp, StartInterval, StartBatch
 %    spawn_link(fun() -> 
 %		       spit_mon_log(Logger, 1000, ClientNum, T)
 %	       end),
-    start_loop(Prefix, 0, ClientNum, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout, T),
+    start_loop(Prefix, 0, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout, T),
     error_logger:info_msg("All clients started : ~p~n", [ClientNum]),
     monitor_client(T, ClientNum, 0).
 
@@ -49,15 +49,15 @@ monitor_client(T, AliveCount, DiedCount) ->
     end.
     
 
-start_loop(_, FromIndex, ClientNum, _, _, _, _, _, _, _, _) when FromIndex >= ClientNum -> ok;
-start_loop(Prefix, FromIndex, ClientNum, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout, PidTable) ->    
+start_loop(_, FromIndex, ClientNum, _, _, _, _, _, _, _, _, _) when FromIndex >= ClientNum -> ok;
+start_loop(Prefix, FromIndex, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout, PidTable) ->    
     error_logger:info_msg("Start : ~p -> ~p~n", [FromIndex, FromIndex + StartBatchSize]),
-    start_routers(Prefix, FromIndex, min(FromIndex + StartBatchSize, ClientNum), Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable),
+    start_routers(Prefix, FromIndex, min(FromIndex + StartBatchSize, ClientNum), UserCount, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable),
     lib_misc:sleep(StartInterval),
-    start_loop(Prefix, FromIndex + StartBatchSize, ClientNum, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout, PidTable).
+    start_loop(Prefix, FromIndex + StartBatchSize, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout, PidTable).
 
-start_routers(_, FromIndex, FromIndex, _, _, _, _, _, _) -> ok;
-start_routers(Prefix, FromIndex, ToIndex, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable) ->
-  {Pid, _} = spawn_monitor(router, start, [Prefix, FromIndex, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout]),
+start_routers(_, FromIndex, FromIndex, _, _,  _, _, _, _, _) -> ok;
+start_routers(Prefix, FromIndex, ToIndex, UserCount, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable) ->
+  {Pid, _} = spawn_monitor(router, start, [Prefix, UserCount, FromIndex, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout]),
   ets:insert(PidTable,{Pid, FromIndex}),  
-  start_routers(Prefix, FromIndex + 1, ToIndex, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable).
+  start_routers(Prefix, FromIndex + 1, ToIndex, UserCount, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable).
