@@ -8,17 +8,23 @@
 %%%-------------------------------------------------------------------
 -module(router_farm).
 -author("LambdaCat").
-
+-include_lib("stdlib/include/qlc.hrl").
 %% API
--export([start/11,help/0]).
+-export([start/10,help/0]).
+-export([get_router_pid_list/1]).
+-export([do_user_online/3]).
+-export([get_ets_table_name/1]).
 
 help() ->
-    io:format("start(WorkerId, Prefix, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout).",[]).
+    io:format("start(Prefix, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout).",[]).
 
-start(WorkerId, Prefix, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout) ->
+get_ets_table_name(Prefix) -> list_to_atom("routers_" ++ Prefix).
+
+start(Prefix, ClientNum, UserCount, Host, Port, BindIp, StartInterval, StartBatchSize, HeartbeatInterval, WaitResponseTimeout) ->
     error_logger:logfile({open, Prefix ++ "_routers.log"}),
     error_logger:tty(false),
-    T = ets:new(list_to_atom("routers_" ++ Prefix),[named_table]),
+    TableName = get_ets_table_name(Prefix),
+    T = ets:new(TableName,[named_table]),
 %    Logger = lib_misc:get_logger("/tmp/" ++ integer_to_list(WorkerId) ++ "_stat.log"),
 %    spawn_link(fun() -> 
 %		       spit_mon_log(Logger, 1000, ClientNum, T)
@@ -27,12 +33,34 @@ start(WorkerId, Prefix, ClientNum, UserCount, Host, Port, BindIp, StartInterval,
     error_logger:info_msg("All clients started : ~p~n", [ClientNum]),
     monitor_client(T, ClientNum, 0).
 
-spit_mon_log(Logger, Sleep, ClientNum, Table) ->
-    Count = ets:info(Table,size),
-    Logger("total=~p,alive=~p~n",[ClientNum, Count]),
-    lib_misc:sleep(Sleep),
-    spit_mon_log(Logger, Sleep, ClientNum, Table).
+get_router_pid_list(Prefix) ->
+    TableName = get_ets_table_name(Prefix),
+    qlc:e(qlc:q([K || {K,_} <- ets:table(TableName)])).
 
+do_user_online(Count, Offset, PidList) ->
+    do_user_online_loop(Count, Offset, PidList, erlang:length(PidList)).
+
+do_user_online_loop(_count, _offset, [], N) -> wait_user_online_done(N);
+do_user_online_loop(Count, Offset, [Pid|Tail], N) ->
+    Pid ! {self(), user_online, Offset, Count},
+    do_user_online_loop(Count, Offset, Tail, N).
+
+wait_user_online_done(0) -> ok;
+wait_user_online_done(N) ->
+    receive 
+	{From, {error, Reason}} ->
+	    error_logger:error_msg("~p~n",{From, {error, Reason}}),
+	    wait_user_online_done(N - 1);
+	{_, ok} ->
+	    error_logger:info_msg("ok~n"),
+	    wait_user_online_done(N - 1)
+    end.
+
+%% spit_mon_log(Logger, Sleep, ClientNum, Table) ->
+%%     Count = ets:info(Table,size),
+%%     Logger("total=~p,alive=~p~n",[ClientNum, Count]),
+%%     lib_misc:sleep(Sleep),
+%%     spit_mon_log(Logger, Sleep, ClientNum, Table).
 
 monitor_client(T, AliveCount, DiedCount) ->
     case ets:first(T) of
@@ -47,6 +75,9 @@ monitor_client(T, AliveCount, DiedCount) ->
 		    monitor_client(T, AliveCount - 1, DiedCount + 1)
 	    end
     end.
+
+
+    
     
 
 start_loop(_, FromIndex, ClientNum, _, _, _, _, _, _, _, _, _) when FromIndex >= ClientNum -> ok;
@@ -58,6 +89,6 @@ start_loop(Prefix, FromIndex, ClientNum, UserCount, Host, Port, BindIp, StartInt
 
 start_routers(_, FromIndex, FromIndex, _, _,  _, _, _, _, _) -> ok;
 start_routers(Prefix, FromIndex, ToIndex, UserCount, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable) ->
-  {Pid, _} = spawn_monitor(router, start, [Prefix, UserCount, FromIndex, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout]),
+  {Pid, _} = spawn_monitor(router, start, [Prefix, FromIndex, UserCount, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout]),
   ets:insert(PidTable,{Pid, FromIndex}),  
   start_routers(Prefix, FromIndex + 1, ToIndex, UserCount, Host, Port, BindIp, HeartbeatInterval, WaitResponseTimeout, PidTable).

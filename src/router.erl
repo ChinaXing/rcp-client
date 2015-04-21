@@ -31,13 +31,19 @@ start(Prefix, Index, UserCount, Host, Port, BindIp, HeartbeatInterval, WaitTimeo
     [C|_] = Prefix,
     I = list_to_integer([C]),
     % start user online
-    router_user_online:do_online(IOPid, {UserCount, Prefix, I bsl 16 + Index,WaitTimeout, Logger}),
+    RouterIndex = I bsl 16 + Index,
+    router_user_online:do_online(IOPid, {UserCount, Prefix, RouterIndex ,WaitTimeout, Logger}),
     
     %% listen 
-    command_listen(Logger).
+    command_listen(Logger,Prefix,IOPid, RouterIndex, WaitTimeout).
 
-command_listen(Logger) ->
+command_listen(Logger,Prefix, IOPid, RouterIndex, WaitTimeout) ->
     receive
+	{From, user_online,Offset, Count} ->
+	    Ret = router_user_online:do_online(IOPid,
+						{Count, Prefix, RouterIndex + Offset, WaitTimeout, Logger}
+					       ),
+	    From ! {self(), Ret};
 	{_, error, Reason} ->
 	    Logger(error,"router exit , reason : ~p~n",[Reason]),
 	    exit(Reason)
