@@ -1,22 +1,22 @@
 -module(router_heartbeat).
--export([heart_beat_loop/2,do_heart_beat/2]).
+-export([heart_beat_loop/3,do_heart_beat/3]).
 
 %% 不停地执行心跳，固定的频率，一旦失败，就退出
 -spec heart_beat_loop(pid(),
 		    { Prefix :: string(),
 		      Index :: integer(),
 		      WaitTimeout :: integer(),
-		      HeartbeatInterval :: integer(),
-		      Logger :: fun()}
+		      HeartbeatInterval :: integer()},
+		      Logger :: fun()
 		   ) -> {ok, RepeaterPid :: pid()}.
 %% ---------------------------------------------------------
 %% 执行定时的心跳
 %% 1. 返回一个心跳进程的Pid，如果心跳出错，此进程退出，并发送给调用者一个失败的消息
 %% 2. 调用者可以控制此心跳进程的退出
 %% ---------------------------------------------------------
-heart_beat_loop(IOPid, {Prefix, Index, WaitTimeout, HeartbeatInterval, Logger}) ->
+heart_beat_loop(IOPid, {Prefix, Index, WaitTimeout, HeartbeatInterval}, Logger) ->
     HeartbeatExecutor = spawn_link(fun() ->
-					   heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout, Logger})
+					   heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout}, Logger)
 				   end),
     Caller = self(),
     Repeater = spawn_link(fun() ->
@@ -48,12 +48,12 @@ heart_beat_fix_rate(HeartbeatExecutor, HeartbeatInterval) ->
 %% 1. 如果出错则发送错误消息给启动者，然后退出
 %% 2. 否则一直等待新的启动消息
 %% -----------------------------------------------------------
-heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout, Logger}) ->
+heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout}, Logger) ->
     receive 
 	{From, start} ->
-	    case do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, 5, Logger}) of
+	    case do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, 5}, Logger) of
 		ok ->
-		    heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout, Logger});
+		    heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout}, Logger);
 		{error, Reason} ->
 		    From ! {self(), error, Reason}
 	    end;
@@ -68,11 +68,11 @@ heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout, Logger}) ->
 		      Index :: integer(),
 		      WaitTimeout :: integer(),
 		      HeartbeatInterval :: integer(),
-		      Retry :: integer(),
-		      Logger :: fun()}
+		      Retry :: integer()},
+		      Logger :: fun()
 		   ) -> ok | {error, Reason :: any()}.
 
-do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry, Logger}) ->
+do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry}, Logger) ->
     Packet = packet_farm:build_package(heartbeat, Prefix, true, [200]),
     Start = lib_misc:get_timestamp_micro_seconds(),
     IOPid ! {self(), heartbeat, Packet},
@@ -85,7 +85,7 @@ do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry, Logger}) ->
 		    {error, Reason};
 		true ->
 		    Logger(error, "retry send heartbeat : ~p~n", [Retry]),
-		    do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry - 1, Logger})
+		    do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry - 1}, Logger)
 	    end;
 	ok ->
 	    Logger(info, "send heartbeat request ok~n",[]),
@@ -97,7 +97,7 @@ do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry, Logger}) ->
 			    Logger(error, "heartbeat failed after reties ~n", []),
 			    {error, Reason};
 			true ->
-			    do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry - 1, Logger})
+			    do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry - 1}, Logger)
 		    end;
 		{response, Response} ->
 		    case check_heart_beat(Response) of
@@ -111,7 +111,7 @@ do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry, Logger}) ->
 				    Logger(error, "heartbeat failed after reties ~n", []),
 				    {error, Reason};
 				true ->
-				    do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry - 1, Logger})
+				    do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry - 1}, Logger)
 			    end
 		    end
 	    after WaitTimeout ->

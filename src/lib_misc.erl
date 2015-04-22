@@ -11,12 +11,17 @@
 
 %% API
 -compile(export_all).
+-compile([{parse_transform, lager_transform}]).
 -record(mac , { a=0, b=0, c=0, d=0, e=0, f=0 }).
 
 sleep(Timeout) ->
   receive
   after Timeout -> ok
   end.
+
+do_log(Message,Args) ->
+    lager:start(),
+    lager:info(Message,Args).
 
 lib_init(Index) ->
     {_,B,C} = now(),
@@ -46,13 +51,13 @@ gen_logger(Identity, Args0) ->
     fun(Type, Strformat, Args) -> 
 	    case Type  of
 		error ->
-		    error_logger:error_msg(Identity ++ Strformat, list_concat(Args0, Args));
+		    lager:error(Identity ++ Strformat, list_concat(Args0, Args));
 		info ->
-		    error_logger:info_msg(Identity ++ Strformat, list_concat(Args0, Args));
+		    lager:info(Identity ++ Strformat, list_concat(Args0, Args));
 		warn ->
-		    error_logger:warning_msg(Identity ++ Strformat, list_concat(Args0, Args));
+		    lager:warning(Identity ++ Strformat, list_concat(Args0, Args));
 		_ -> 
-		    error_logger:info_msg(Identity ++ Strformat, list_concat(Args0, Args))
+		    lager:info(Identity ++ Strformat, list_concat(Args0, Args))
 	    end
     end.
 

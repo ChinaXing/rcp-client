@@ -1,12 +1,35 @@
 {application, rcp_client,
  [
-  {description, ""},
+  {description, "rcp-client-star"},
   {vsn, "1"},
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+		  lager,
+		  sasl
                  ]},
   {mod, { rcp_client_app, []}},
-  {env, []}
+  {env, [
+	 {lager, [
+		  {log_root, "router_default.log"},
+		  {handlers, [
+			      {lager_console_backend, info},
+			      {lager_file_backend, [{file, "router_error.log"}, {level, error}]},
+			      {lager_file_backend, [{file, "router_info.log"}, {level, info}]}
+			     ]},
+		  {traces, [
+			    {{lager_file_backend, "user_online.log"},[{module,router_farm},{function, do_user_online}],[{level,debug}]}
+			   ]}
+		 ]},
+	 {default_start_args, [
+			       {prefix, "0_"},
+			       {heartbeat_interval, 300000},
+			       {batch_size,50},
+			       {timeout, 5000},
+			       {user_count, 10},
+			       {host, {192,168,11,6}},
+			       {port, 9090}
+			      ]}
+	]}
  ]}.

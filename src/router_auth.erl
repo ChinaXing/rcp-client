@@ -1,14 +1,14 @@
 -module(router_auth).
--export([do_auth/2]).
+-export([do_auth/3]).
 -spec do_auth(pid(),
 	      {Prefix :: string() , 
 	       Index :: integer(), 
 	       WaitTimeout :: integer(), 
-	       Retry :: integer(), 
-	       Logger :: fun()}
+	       Retry :: integer()},
+	       Logger :: fun()
 	     ) -> ok | {error, Reason :: any()}.
 
-do_auth(IOPid, {Prefix, Index, WaitTimeout,Retry, Logger}) ->
+do_auth(IOPid, {Prefix, Index, WaitTimeout,Retry}, Logger) ->
     Packet = packet_farm:build_package(auth, Prefix, Index,[]),
     Start = lib_misc:get_timestamp_micro_seconds(),
     IOPid ! {self(), auth, Packet},
@@ -21,7 +21,7 @@ do_auth(IOPid, {Prefix, Index, WaitTimeout,Retry, Logger}) ->
 		    {error, Reason};
 		true ->
 		    Logger(error, "retry send auth : ~p~n", [Retry]),
-		    do_auth(IOPid, {Prefix, Index, WaitTimeout, Retry - 1, Logger})
+		    do_auth(IOPid, {Prefix, Index, WaitTimeout, Retry - 1}, Logger)
 	    end;
 	ok ->
 	    receive
