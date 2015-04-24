@@ -10,8 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    {ok, StartArgs} = application:get_env(default_start_args),
-    rcp_client_sup:start_link(StartArgs).
+  rcp_client_sup:start_link().
 
 stop(_State) ->
-    ok.
+  ok.
