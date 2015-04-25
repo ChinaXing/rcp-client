@@ -32,7 +32,7 @@ start(Prefix, Index, UserCount, Host, Port, HeartbeatInterval, WaitTimeout) ->
   I = list_to_integer([C]),
   % start user online
   RouterIndex = I bsl 16 + Index,
-  router_user_online:do_online(IOPid, {UserCount, Prefix, RouterIndex, WaitTimeout}),
+  router_user_online:do_online(IOPid, {UserCount, Prefix, RouterIndex, WaitTimeout}, Logger),
 
   %% listen
   command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger).
@@ -41,7 +41,7 @@ command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger) ->
   receive
     {From, user_online, Offset, Count} ->
       Ret = router_user_online:do_online(IOPid,
-        {Count, Prefix, RouterIndex + Offset, WaitTimeout, Logger}
+        {Count, Prefix, RouterIndex + Offset, WaitTimeout}, Logger
       ),
       From ! {self(), Ret},
       command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger);
