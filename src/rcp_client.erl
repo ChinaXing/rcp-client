@@ -18,8 +18,10 @@
   set_start_param/1,
   get_start_param/0,
   get_router_pid_list/0,
-  user_online/3
+  user_online/3,
+  help/0
 ]).
+
 
 %% gen_server callbacks
 -export([init/1,
@@ -32,6 +34,14 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {start_args}).
+
+help() ->
+    lager:info("hello,help~n",[]),
+    do_help().
+
+do_help() ->
+    lager:info("do help~n",[]),
+    ok.
 
 -type router_start_option() :: {rcp_host, Host :: string()}
 | {rcp_port, Port :: integer()}
@@ -68,7 +78,7 @@ start_routers() ->
   gen_server:cast(
     ?SERVER,
     start_routers
-  ).
+   ).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -80,7 +90,7 @@ start_routers() ->
 get_router_pid_list() ->
   gen_server:call(
     ?SERVER,
-    get_router_pid_list).
+    get_router_pid_list, 10000).
 %%--------------------------------------------------------------------
 %% @doc
 %% do user online
@@ -165,13 +175,16 @@ handle_call({set_start_param, Options}, _From, #state{start_args = StartArgs} = 
     State#state{start_args = NArgs}
   };
 
-handle_call(get_start_param, _From, State) ->
-  {reply, State, State};
+handle_call(get_start_param, _From, #state{ start_args = StartArgs} = State) ->
+  {reply, StartArgs, State};
 
 handle_call(get_router_pid_list, _From, #state{start_args = StartArgs} = State) ->
+  io:format("get_router_pid_list .. ~n",[]),  
   TableName = maps:get(table_name, StartArgs),
   Rt = qlc:e(qlc:q([K || {K, _} <- ets:table(TableName)])),
+  io:format("end ~n",[]),  
   {reply, Rt, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private
