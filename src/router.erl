@@ -36,16 +36,16 @@ start(Prefix, Index, UserCount, Host, Port, HeartbeatInterval, WaitTimeout) ->
   router_user_online:do_online(IOPid, {UserCount, Prefix, RouterIndex, WaitTimeout}, UserOnlineLogFun),
 
   %% listen
-  command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger).
+  command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger, UserOnlineLogFun).
 
-command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger) ->
+command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger, UserOnlineLogFun) ->
   receive
     {From, user_online, Offset, Count} ->
       Ret = router_user_online:do_online(IOPid,
-        {Count, Prefix, RouterIndex + Offset, WaitTimeout}, lib_misc:get_logger(Logger, user_online)
+        {Count, Prefix, RouterIndex + Offset, WaitTimeout}, UserOnlineLogFun
       ),
       From ! {self(), Ret},
-      command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger);
+      command_listen(Prefix, IOPid, RouterIndex, WaitTimeout, Logger, UserOnlineLogFun);
     {_, error, Reason} ->
       Logger(error, "router exit , reason : ~p~n", [Reason]),
       exit(Reason)
