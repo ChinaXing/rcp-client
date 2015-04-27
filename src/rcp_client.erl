@@ -99,7 +99,7 @@ get_router_pid_list() ->
 %%--------------------------------------------------------------------
 -spec(user_online(Count :: integer(), Offset :: integer(), PidList :: [pid()]) -> ok | {error, Reason :: term()}).
 user_online(Count, Offset, PidList) ->
-  gen_server:call(
+  gen_server:cast(
     ?SERVER,
     {do_user_online, {Count, Offset, PidList}}
   ).
@@ -323,6 +323,7 @@ do_parallel_start_routers(Prefix, FromIndex, ToIndex, Map) ->
   Timeout = maps:get(timeout, Map),
   HeartBeatInterval = maps:get(heartbeat_interval, Map),
   {Pid, _} = spawn_monitor(router, start, [Prefix, FromIndex, UserCount, Host, Port, HeartBeatInterval, Timeout]),
+  register(list_to_atom("router_io_" ++ Prefix ++ integer_to_list(FromIndex)), Pid),
   PidTable = maps:get(table_name, Map),
   ets:insert(PidTable, {Pid, FromIndex}),
   do_parallel_start_routers(Prefix, FromIndex + 1, ToIndex, Map).
