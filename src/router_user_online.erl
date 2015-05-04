@@ -6,18 +6,18 @@ do_online(IOPid, {Count, Prefix, RouterIndex, WaitTimeout}, Logger) ->
   Logger(info, "do user online : ~p, ~p, ~p~n", [Prefix, RouterIndex, Count]),
   Pkg = packet_farm:build_package(user_online, RouterIndex, Count, []),
   Start = lib_misc:get_timestamp_micro_seconds(),
-  IOPid ! {self(), user_online, Pkg},
+  IOPid ! {self(), user_online, Pkg, undefined},
   receive
-    {error, Reason} ->
+    {user_online, send_result, {error, Reason}, _Context} ->
       Logger(error, "send user online failed : ~p~n", [Reason]),
       {error, Reason};
-    ok ->
+    {user_online, send_result, ok, _Context} ->
       Logger(info, "send user_online request ok~n", []),
       receive
-        {error, Reason} ->
+        {user_online, data, {error, Reason}} ->
           Logger(error, "receive user_online response error : ~p~n", [Reason]),
           {error, Reason};
-        {response, Response} ->
+        {user_online, data, Response} ->
           case check_online(Response) of
             {ok, Result} ->
               End = lib_misc:get_timestamp_micro_seconds(),

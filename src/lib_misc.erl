@@ -132,7 +132,7 @@ gc_repeater(stop) ->
 	_ ->
 	    not_exsit
     end;
-	    
+
 gc_repeater(start) ->
     Interval = case get(gc_repeater_interval) of
 		   undefined ->
@@ -160,3 +160,24 @@ gc_loop0(Interval) ->
     after (Interval * 1000) ->
 	    gc_loop0(Interval)
     end.
+
+mac_to_string(Mac) ->
+    <<M:48,_/binary>> = <<Mac:64>>,
+    L = [ I || <<I:4>> <= <<M:48>> ],
+    {_, R } = lists:foldl(fun(Elem, {C,Acc}) ->
+				  if 
+				      C =:= 0  ->
+					  {C+1, Acc ++ to_hex_string(Elem)};
+				      C rem 2 =:= 0 ->
+					  {C+1, Acc ++ ":" ++ to_hex_string(Elem)};
+				      true ->
+					  {C+1, Acc ++ to_hex_string(Elem)}
+				  end
+			  end, {0, []}, L),
+    R.
+
+
+to_hex_string(E) when E > 9 ->
+    [$A + (E-10)];
+to_hex_string(E) ->
+    [$0 + E].

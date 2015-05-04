@@ -75,9 +75,9 @@ heart_beat_executor(IOPid, {Prefix, Index, WaitTimeout}, Logger) ->
 do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry}, Logger) ->
   Packet = packet_farm:build_package(heartbeat, Prefix, true, [200]),
   Start = lib_misc:get_timestamp_micro_seconds(),
-  IOPid ! {self(), heartbeat, Packet},
+  IOPid ! {self(), heartbeat, Packet, undefined},
   receive
-    {error, Reason} ->
+    {heartbeat, send_result, {error, Reason},_Context} ->
       Logger(error, "send heartbeat package failed : ~p ~n", [Reason]),
       if
         Retry == 1 ->
@@ -87,10 +87,10 @@ do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry}, Logger) ->
           Logger(error, "retry send heartbeat : ~p~n", [Retry]),
           do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry - 1}, Logger)
       end;
-    ok ->
+    {heartbeat, send_result, ok, _Context} ->
       Logger(info, "send heartbeat request ok~n", []),
       receive
-        {error, Reason} ->
+        {heartbeat, data, {error, Reason}} ->
           Logger(error, "receive heartbeat error : ~p~n", [Reason]),
           if
             Retry == 1 ->
@@ -99,7 +99,7 @@ do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry}, Logger) ->
             true ->
               do_heart_beat(IOPid, {Prefix, Index, WaitTimeout, Retry - 1}, Logger)
           end;
-        {response, Response} ->
+        {heartbeat, data, Response} ->
           case check_heart_beat(Response) of
             ok ->
               End = lib_misc:get_timestamp_micro_seconds(),

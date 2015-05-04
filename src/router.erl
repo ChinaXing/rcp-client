@@ -26,6 +26,9 @@ start(Prefix, Index, UserCount, Host, Port, HeartbeatInterval, WaitTimeout) ->
   %% start heartbeat
   {ok, _} = router_heartbeat:heart_beat_loop(
     IOPid, {Prefix, Index, WaitTimeout, HeartbeatInterval}, Logger),
+  %% register user_pass_processor
+  UserAllowLogFun  = fun(Type, Strformat, Args) -> Logger({[{context, user_pass}],  Type}, Strformat, Args) end,
+  router_user_pass:start(IOPid, UserAllowLogFun), 
   % sleep a while
   lib_misc:sleep(5000),
   [C | _] = Prefix,
@@ -67,7 +70,7 @@ start_router(Host, Port, WaitTimeout, Logger) ->
   End = lib_misc:get_timestamp_micro_seconds(),
   Logger(info, "connected, connect_rt=~p~n", [End - Start]),
   Pid = spawn_link(fun() ->
-    io_loop(Socket, Logger)
+       io_loop(Socket, Logger)
   end),
   ok = gen_tcp:controlling_process(Socket, Pid),
   {ok, Pid}.
@@ -77,8 +80,8 @@ io_loop(Socket, Logger) ->
   receive
     {tcp, Socket, Data} ->
       case demultiplex(Data) of %% 解多路复用，分解到具体的业务进程处理
-        {ok, Target} ->
-          Target ! {response, Data},
+        {ok, {Type, Target}} ->
+          Target ! {Type, data, Data},
           io_loop(Socket, Logger);
         {error, Reason} ->
           Logger(warn, "[ignore] cannot demultiplex response Data to biz Packet,~p~n", [Reason]),
@@ -90,9 +93,13 @@ io_loop(Socket, Logger) ->
     {tcp_error, Socket, Reason} ->
       Logger(error, "socket error : ~p~n", [Reason]),
       exit(Reason);
-    {From, Type, Packet} ->
-      put("packet_type_" ++ Type, From), %% save packet type owner / for later demultiplex
-      From ! gen_tcp:send(Socket, Packet),
+    {_, set_packet_processor, {Type,Pid}} -> 
+      put("resp_packet_type_" ++ Type, Pid),
+      io_loop(Socket, Logger);
+    {From, Type, Packet, Context} ->
+      put("req_packet_type_" ++ Type, From), %% save packet type owner / for later demultiplex
+      Res = gen_tcp:send(Socket, Packet),
+      From ! {Type, send_result, Res, Context}, 	  
       io_loop(Socket, Logger);
     {From, exit} ->
       From ! ok,
@@ -110,18 +117,34 @@ demultiplex(Data) ->
     {unknow, Reason} ->
       {error, Reason};
     Type ->
-      case packet_farm:get_packet_command_req(Type) of
+      case packet_farm:get_packet_command_literal(Type) of
         {unknow, Reason} ->
           {error, {unknow, Reason}};
-        {ok, ReqCmds} ->
-          find_req_by_cmds(ReqCmds)
+        {ok, Cmds} ->
+          case find_req_by_cmds(Cmds) of
+	      {error, _} ->
+		  find_resp_by_cmds(Cmds); 
+	      Ret ->
+		  Ret
+	  end
       end
   end.
 find_req_by_cmds([Cmd | Cmds]) ->
-  case get("packet_type_" ++ Cmd) of
+  case get("req_packet_type_" ++ Cmd) of
     undefined ->
       find_req_by_cmds(Cmds);
     Target ->
-      {ok, Target}
+      put("req_packet_type_" ++ Cmd, undefined),
+      {ok, {Cmd, Target}}
   end;
-find_req_by_cmds([]) -> {error, {no_registered_cmd_processor}}.
+find_req_by_cmds([]) -> {error, {no_registered_req_cmd_processor}}.
+find_resp_by_cmds([Cmd | Cmds]) -> 
+  case get("resp_packet_type_" ++ Cmd) of
+    undefined ->
+      find_resp_by_cmds(Cmds);
+    Target ->
+      {ok, {Cmd, Target}}
+  end;
+find_resp_by_cmds([]) -> {error, {no_registered_resp_cmd_procesor}}.
+
+    

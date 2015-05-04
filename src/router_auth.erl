@@ -11,9 +11,9 @@
 do_auth(IOPid, {Prefix, Index, WaitTimeout, Retry}, Logger) ->
   Packet = packet_farm:build_package(auth, Prefix, Index, []),
   Start = lib_misc:get_timestamp_micro_seconds(),
-  IOPid ! {self(), auth, Packet},
+  IOPid ! {self(), auth, Packet, undefined},
   receive
-    {error, Reason} ->
+    {auth, send_result, {error, Reason}, _} ->
       Logger(error, "send auth package failed : ~p ~n", [Reason]),
       if
         Retry == 1 ->
@@ -23,9 +23,9 @@ do_auth(IOPid, {Prefix, Index, WaitTimeout, Retry}, Logger) ->
           Logger(error, "retry send auth : ~p~n", [Retry]),
           do_auth(IOPid, {Prefix, Index, WaitTimeout, Retry - 1}, Logger)
       end;
-    ok ->
+    {auth, send_result, ok, _} ->
       receive
-        {response, Response} ->
+        {auth, data, Response} ->
           case check_auth(Response) of
             ok ->
               End = lib_misc:get_timestamp_micro_seconds(),

@@ -1,5 +1,5 @@
 -module(packet_farm).
-%-export([build_package/4, parse_package/2, get_packet_command/1]).
+%-export([build_package/4, parse_package/2, get_packet_command/1, parse_body/2]).
 -compile(export_all).
 -include("package_constant.hrl").
 
@@ -59,7 +59,12 @@ build_package(heartbeat, _, _, [OnlineNum]) ->
   PBbits = <<(PB#heartbeatBody.onlineUserNum):16>>,
 %    PkgLen = byte_size(PBbits) + 24,
   PH = build_header(?ROUTER_HEART_BEAT_COMMAND_REQUEST),
-  list_to_binary([PH, PBbits]).
+  list_to_binary([PH, PBbits]);
+
+build_package(user_pass_resp, _, _, [Mac]) ->
+    PB = <<1,0:16,Mac:64>>,
+    PH = build_header(?USER_ALLOW_RESP),
+    list_to_binary([PH,PB]).
 
 build_header(Command) ->
   P = #phead{command = Command},
@@ -94,6 +99,10 @@ parse_package(user_allow, Bin) ->
       {error, Cmd}
   end.
 
+parse_body(user_allow,Data) ->
+    <<_:(?HEADER_LENGTH * 8),Body/binary>> = Data,
+    Body.
+
 get_packet_command(Packet) ->
   try
     <<_:48, Command:16, _/binary>> = Packet,
@@ -113,9 +122,9 @@ get_packet_command(Packet) ->
 
 
 
-get_packet_command_req(ResponseCmd) ->
+get_packet_command_literal(ResponseCmd) ->
   case ResponseCmd of
-    user_allow -> {ok, [user_online, user_offline]};
+    user_allow -> {ok, [user_online, user_offline, user_pass]};
     heartbeat -> {ok, [heartbeat]};
     auth -> {ok, [auth]};
     _ -> {unknow, ResponseCmd}

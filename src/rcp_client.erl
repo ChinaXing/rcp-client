@@ -36,6 +36,7 @@
 -record(state, {start_args}).
 
 help() ->
+    io:format("helooo, test~n",[]),
     lager:info("hello,help~n",[]),
     do_help().
 
