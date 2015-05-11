@@ -312,7 +312,7 @@ do_start_routers(Prefix, FromIndex, ClientNum, Map) ->
   StartBatchSize = maps:get(batch_size, Map),
   lager:info("Start : ~p -> ~p~n", [FromIndex, FromIndex + StartBatchSize]),
   do_parallel_start_routers(Prefix, FromIndex, min(FromIndex + StartBatchSize, ClientNum), Map),
-  lib_misc:sleep(1000),
+  timer:sleep(1000),
   do_start_routers(Prefix, FromIndex + StartBatchSize, ClientNum, Map).
 
 do_parallel_start_routers(_, FromIndex, FromIndex, _Map) -> ok;

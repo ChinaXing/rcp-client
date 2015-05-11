@@ -22,7 +22,7 @@ do_online(IOPid, {Count, Prefix, RouterIndex, WaitTimeout}, Logger) ->
             {ok, Result} ->
               End = lib_misc:get_timestamp_micro_seconds(),
               Logger(info, "receive user_online response valid:~p, online_rt=~p~n", [Result, End - Start]),
-              lib_misc:sleep(1000),
+              timer:sleep(1000),
               do_online(IOPid, {Count - 1, Prefix, RouterIndex, WaitTimeout}, Logger);
             {error, Reason} ->
               Logger(error, "receive user_online response invalid:~p ~n", [Reason]),

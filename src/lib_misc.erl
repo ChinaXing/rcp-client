@@ -14,10 +14,10 @@
 -compile(export_all).
 -record(mac, {a = 0, b = 0, c = 0, d = 0, e = 0, f = 0}).
 
-sleep(Timeout) ->
-    receive
-    after Timeout -> ok
-    end.
+%% sleep(Timeout) ->
+%%     receive
+%%     after Timeout -> ok
+%%     end.
 
 do_log(Message, Args) ->
     lager:start(),
@@ -28,7 +28,7 @@ lib_init(Index) ->
     random:seed(B, C, Index).
 
 sleep_random(Timeout, Delta) ->
-    sleep(Timeout - Delta + random:uniform(2 * Delta)).
+    timer:sleep(Timeout - Delta + random:uniform(2 * Delta)).
 
 list_flatten(L) -> list_reverse((list_flatten_loop([], L))).
 

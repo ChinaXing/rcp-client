@@ -30,7 +30,7 @@ start(Prefix, Index, UserCount, Host, Port, HeartbeatInterval, WaitTimeout) ->
   UserAllowLogFun  = fun(Type, Strformat, Args) -> Logger({[{context, user_pass}],  Type}, Strformat, Args) end,
   router_user_pass:start(IOPid, UserAllowLogFun), 
   % sleep a while
-  lib_misc:sleep(5000),
+  timer:sleep(5000),
   [C | _] = Prefix,
   I = list_to_integer([C]),
   % start user online
